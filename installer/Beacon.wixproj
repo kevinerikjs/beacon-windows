@@ -1,0 +1,12 @@
+<!-- Builds Beacon.msi with WiX v5 (MS-RL, no fee). Run build.ps1 rather than this directly. -->
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>Beacon</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <DefineConstants>BeaconVersion=$(BeaconVersion);BeaconExe=$(BeaconExe)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.2" />
+    <PackageReference Include="WixToolset.Firewall.wixext" Version="5.0.2" />
+  </ItemGroup>
+</Project>

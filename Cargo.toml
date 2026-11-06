@@ -1,0 +1,59 @@
+[package]
+name = "beacon-windows"
+version = "0.1.0"
+edition = "2021"
+description = "Beacon for Windows: streams this PC's screen and sound to Beam on iPhone/iPad, speaking the Phoros wire protocol."
+license = "AGPL-3.0-only"
+
+[[bin]]
+name = "beacon"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+hkdf = "0.12"
+hmac = "0.12"
+sha2 = "0.10"
+aes-gcm = "0.10"
+rand = "0.8"
+mdns-sd = "0.13"
+cpal = "0.15"
+if-addrs = "0.13"
+# The UDP media transport (rtc2), the same Rust core Beam and Beacon for Mac use.
+phoros-core = { path = "../phoros/Core/phoros-core" }
+vigem-client = "0.1"
+# Media Foundation's AAC encoder (COM), in process: an ffmpeg pipe held ~150 ms of audio.
+windows = { version = "0.61", features = ["Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_Foundation"] }
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Shell",
+  "Win32_UI_HiDpi",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Dwm",
+  "Win32_System_Threading",
+  "Win32_System_Registry",
+  "Win32_System_Console",
+  "Win32_System_LibraryLoader",
+  "Win32_System_SystemInformation",
+  "Win32_System_SystemServices",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_UI_Controls",
+] }
+
+[build-dependencies]
+embed-resource = "3"
+
+# phoros-core's own patch: str0m 0.23.1 with a configurable NACK interval. A [patch] in a
+# dependency is ignored, so the consumer repeats it.
+[patch.crates-io]
+str0m = { path = "../phoros/Core/phoros-core/vendor/str0m" }
+
+[profile.release]
+lto = true
+codegen-units = 1
