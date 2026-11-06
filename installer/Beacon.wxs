@@ -1,0 +1,54 @@
+<!--
+  Beacon.msi: installs beacon.exe to Program Files with a Start menu shortcut and a firewall rule.
+  Uninstalling removes everything Beacon added: the files, the shortcut, every firewall rule for
+  beacon.exe (also ones Windows made from its own prompt), Start with Windows, and %APPDATA%\Beacon
+  (pairings, phone buttons, log) for the user who uninstalls. Upgrades keep the pairings.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:fw="http://wixtoolset.org/schemas/v4/wxs/firewall">
+  <Package Name="Beacon" Manufacturer="Beam" Version="$(BeaconVersion)" UpgradeCode="00b6d71a-1074-4aa5-98f8-5e8d913f8afc" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Beacon is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="beacon.ico" SourceFile="..\assets\beacon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="beacon.ico" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Beacon">
+        <Component>
+          <File Id="BeaconExe" Source="$(BeaconExe)" KeyPath="yes">
+            <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Beacon" Description="Stream this PC to Beam on your iPhone or iPad" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="beacon.ico" />
+            <!-- Every network type: Windows calls new networks Public, home Wi-Fi included. Beam still
+                 needs the 6-digit code shown on this PC to pair, and every connection is encrypted. -->
+            <fw:FirewallException Id="BeaconFirewall" Name="Beacon" Description="Lets Beam on your iPhone or iPad find this PC and stream from it." Scope="any" Profile="all" />
+          </File>
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Quit a running Beacon before its files are replaced or removed. -->
+    <util:CloseApplication Id="CloseBeacon" Target="beacon.exe" CloseMessage="yes" RebootPrompt="no" TerminateProcess="0" />
+
+    <!-- Beacon undoes what it created for the user: Start with Windows and %APPDATA%\Beacon. -->
+    <CustomAction Id="ForgetUserData" FileRef="BeaconExe" ExeCommand="--uninstall" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <!-- Also catches the allow/block rules Windows adds itself when it asks about network access. -->
+    <SetProperty Id="RemoveFirewallRules" Value="&quot;[System64Folder]netsh.exe&quot; advfirewall firewall delete rule name=all program=&quot;[#BeaconExe]&quot;" Before="RemoveFirewallRules" Sequence="execute" />
+    <CustomAction Id="RemoveFirewallRules" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <!-- In the UI sequence, so Beacon starts as the user, not elevated. -->
+    <CustomAction Id="LaunchBeacon" FileRef="BeaconExe" ExeCommand="" Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <!-- WiX puts this before InstallFiles, which on uninstall is after RemoveFiles: close Beacon first. -->
+      <Custom Action="override Wix4CloseApplications_X64" Before="InstallValidate" />
+      <Custom Action="ForgetUserData" Before="RemoveFiles" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="RemoveFirewallRules" Before="InstallFinalize" Condition="REMOVE~=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+    <InstallUISequence>
+      <Custom Action="LaunchBeacon" After="ExecuteAction" Condition="NOT Installed AND NOT REMOVE" />
+    </InstallUISequence>
+  </Package>
+</Wix>
